@@ -17,8 +17,8 @@ ABrawlBall::ABrawlBall()
 	BoundingSphere->InitSphereRadius(35.0f);
 
 	BoundingSphere->BodyInstance.SetCollisionProfileName("Ball");
-	BoundingSphere->BodyInstance.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
+	BoundingSphere->BodyInstance.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BoundingSphere->SetIsReplicated(true);
 	OnActorHit.AddDynamic(this, &ABrawlBall::OnHit);
 	
 	SpriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite"));
@@ -31,6 +31,10 @@ ABrawlBall::ABrawlBall()
 	/*OrbitalMovementComponent = CreateDefaultSubobject<UOrbitalMovementComponent>(TEXT("RotatingMovementComponent"));
 	OrbitalMovementComponent->SetUpdatedComponent(BoundingSphere);
 	OrbitalMovementComponent->SetIsReplicated(true);*/
+
+	PlanarRotatingMovementComponent = CreateDefaultSubobject<UPlanarRotatingMovementComponent>(TEXT("PlanarRotatingMovementComponent"));
+	PlanarRotatingMovementComponent->SetUpdatedComponent(BoundingSphere);
+	PlanarRotatingMovementComponent->SetIsReplicated(true);
 }
 
 void ABrawlBall::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -52,21 +56,26 @@ void ABrawlBall::Tick(float DeltaTime)
 
 void ABrawlBall::OnHit(AActor * SelfActor, AActor * OtherActor, FVector NormalImpulse, const FHitResult& Hit)
 {
-	UE_LOG(LogClass, Warning, TEXT("OnHit: %d"), (int)Role);
 	if (OtherActor->IsA(ABallBoy::StaticClass()) && OtherActor != GetParentActor())
+	{
+		Cast<ABallBoy>(OtherActor)->CatchBall(this);
+		SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
+	}
+	else
 	{
 		if (Role == ROLE_Authority)
 		{
-			Cast<ABallBoy>(OtherActor)->CatchBall(this);
-			OnCatch(OtherActor->GetActorLocation());
-		}
-		else 
-		{
+			InertialMovementComponent->BounceSurface(Hit.ImpactNormal);
 		}
 	}
 }
 
-void ABrawlBall::OnCatch(const FVector& CatcherLocation)
+void ABrawlBall::SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse)
+{
+	BoundingSphere->SetCollisionResponseToChannel(Channel, NewResponse);
+}
+
+void ABrawlBall::OnCatch(USceneComponent* const CatcherLocation)
 {
 	if (InertialMovementComponent != nullptr)
 	{
@@ -74,22 +83,29 @@ void ABrawlBall::OnCatch(const FVector& CatcherLocation)
 	}
 	if (OrbitalMovementComponent != nullptr)
 	{
-		OrbitalMovementComponent->UpdatePivotTranslation(CatcherLocation - GetActorLocation());
+		//OrbitalMovementComponent->UpdatePivotTranslation(CatcherLocation);
 	}
-	SetActorEnableCollision(false);
+
+	UE_LOG(LogClass, Warning, TEXT("%p"), PlanarRotatingMovementComponent);
+	if (PlanarRotatingMovementComponent != nullptr)
+	{
+		//UE_LOG(LogClass, Warning, TEXT("%d Catcher: %f %f, Ball: %f %f"), (int)Role, CatcherLocation.X, CatcherLocation.Z, GetActorLocation().X, GetActorLocation().Z);
+		PlanarRotatingMovementComponent->SetPivot(CatcherLocation);
+	}
+	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 }
 
 void ABrawlBall::OnThrow(const int Color, const FVector& Direction)
 {
-	if (OrbitalMovementComponent != nullptr)
-	{
-		OrbitalMovementComponent->UpdatePivotTranslation(FVector::ZeroVector);
-	}
 	if (InertialMovementComponent != nullptr)
 	{
 		InertialMovementComponent->UpdateVelocity(Direction);
 	}
-	SetActorEnableCollision(true);
+	if (OrbitalMovementComponent != nullptr)
+	{
+		OrbitalMovementComponent->UpdatePivotTranslation(FVector::ZeroVector);
+	}
+	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Block);
 }
 
 void ABrawlBall::Spin(float AngVel)
@@ -97,6 +113,20 @@ void ABrawlBall::Spin(float AngVel)
 	if (OrbitalMovementComponent != nullptr)
 	{
 		OrbitalMovementComponent->SetAngularSpeed(AngVel);
+	}
+}
+
+void ABrawlBall::SpinTo(const FVector & Forward)
+{
+	Forward.ClampMaxSize(1.0f);
+	//UE_LOG(LogClass, Warning, TEXT("SpinTo: %d"), (int)Role);
+	if (OrbitalMovementComponent != nullptr)
+	{
+		OrbitalMovementComponent->SetLerpForward(Forward);
+	}
+	if (PlanarRotatingMovementComponent != nullptr)
+	{
+		PlanarRotatingMovementComponent->SetTargetRotation(Forward);
 	}
 }
 
