@@ -37,35 +37,27 @@ bool UInertialMovementComponent::MoveUpdatedComponent(const FVector& Delta, cons
 	return true;
 }
 
-void UInertialMovementComponent::UpdateVelocity(const FVector& NewVelocity)
+void UInertialMovementComponent::UpdateVelocity(FVector NewVelocity)
 {	
 	if (NewVelocity == Velocity)
 	{
 		return;
 	}
-
 	Server_Velocity = NewVelocity;
 	Velocity = Server_Velocity;
 	
 	if (GetOwnerRole() < ROLE_Authority)
 	{
-		Server_UpdateVelocity(NewVelocity, UpdatedComponent->GetComponentLocation());
+		Server_UpdateVelocity(NewVelocity);
 	}
 }
 
-void UInertialMovementComponent::BounceSurface(const FVector& Normal)
+void UInertialMovementComponent::Server_UpdateVelocity_Implementation(FVector NewVelocity)
 {
-	FVector Vel = Server_Velocity.MirrorByVector(Normal);
-	UpdateVelocity(Vel);
-}
-
-void UInertialMovementComponent::Server_UpdateVelocity_Implementation(const FVector& NewVelocity, const FVector& PrevPos)
-{
-	MoveUpdatedComponent(PrevPos - UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentRotation());
 	UpdateVelocity(NewVelocity);
 }
 
-bool UInertialMovementComponent::Server_UpdateVelocity_Validate(const FVector& NewVelocity, const FVector& PrevPos)
+bool UInertialMovementComponent::Server_UpdateVelocity_Validate(FVector NewVelocity)
 {
 	return true;
 }

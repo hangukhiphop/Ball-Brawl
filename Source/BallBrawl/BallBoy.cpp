@@ -2,6 +2,7 @@
 
 #include "BallBoy.h"
 #include "UnrealNetwork.h"
+//#include "PaperSprite.h"
 #include "Core.h"
 
 #pragma region Constructor(s)
@@ -13,24 +14,20 @@ ABallBoy::ABallBoy()
 
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+	//bReplicateMovement = true;
 
 	BoundingSphere = CreateDefaultSubobject<USphereComponent>(TEXT("SphereCollider"));
 	RootComponent = BoundingSphere;
 	BoundingSphere->InitSphereRadius(15.0f);
+
 	BoundingSphere->BodyInstance.SetCollisionProfileName("BallBoy");
-	BoundingSphere->BodyInstance.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	BoundingSphere->BodyInstance.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	
 	SpriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("Sprite"));	
-	SpriteComponent->SetCollisionProfileName("NoCollision");
 
 	InertialMovementComponent = CreateDefaultSubobject<UInertialMovementComponent>(TEXT("InertialMovementComponent"));
 	InertialMovementComponent->SetUpdatedComponent(BoundingSphere);
 	InertialMovementComponent->SetIsReplicated(true);
-
-	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
-	SpringArmComponent->SetupAttachment(RootComponent);
-	SpringArmComponent->TargetArmLength = 0.0f;
-	SpringArmComponent->bUsePawnControlRotation = false;	
 }
 
 #pragma endregion
@@ -48,8 +45,6 @@ void ABallBoy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 void ABallBoy::BeginPlay()
 {
 	Super::BeginPlay();
-	bRotateBall = false;
-	TargetAngularDistance = 0.0f;
 }
 
 // Called every frame
@@ -57,31 +52,15 @@ void ABallBoy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);	
 
-	if (!IsHoldingBall()) { return; }
-
-	if (bTickMoveBall)
+	if (HeldBall == nullptr)
 	{
-		float x = GetInputAxisValue("HoldBall_X");
-		float y = GetInputAxisValue("HoldBall_Y");
-		if (!(FMath::Abs(x) < .99f && FMath::Abs(y) < .99f))
-		{
-			SetHeldBallDirection(x, y);
-		}
-
-		bTickMoveBall = false;
+		return;
 	}
-
-	if (bRotateBall)
+	float x = GetInputAxisValue("HoldBall_X");
+	float y = GetInputAxisValue("HoldBall_Y");
+	if (!(x == 0.0f && y == 0.0f))
 	{
-		float DeltaAngle = DeltaTime * BallRotationSpeed * FMath::Sign(TargetAngularDistance);
-		const FRotator DeltaRotator = FRotator(DeltaAngle, 0, 0);
-		SpringArmComponent->AddLocalRotation(DeltaRotator);
-		TargetAngularDistance -= DeltaAngle;
-
-		if (TargetAngularDistance * DeltaAngle < 0.0f)
-		{
-			bRotateBall = false;
-		}
+		SetHeldBallDirection(x, y);
 	}
 }
 
@@ -102,143 +81,132 @@ void ABallBoy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 #pragma region Member Functions
 
-bool ABallBoy::IsHoldingBall() const
+void ABallBoy::MoveX(float Magnitude)
 {
-	return HeldBall != nullptr;
+	InertialMovementComponent->UpdateVelocity(FVector(Magnitude, 0, InertialMovementComponent->Velocity.Z));
 }
 
-void ABallBoy::MoveX_Implementation(float Magnitude)
+void ABallBoy::MoveY(float Magnitude)
 {
-	if (Magnitude != InertialMovementComponent->Velocity.X)
-	{
-		InertialMovementComponent->UpdateVelocity(FVector(Magnitude, 0, InertialMovementComponent->Velocity.Z));
-	}
-}
-void ABallBoy::SetBall_X_Implementation(float Magnitude)
-{
-	bTickMoveBall = true;
+	InertialMovementComponent->UpdateVelocity(FVector(InertialMovementComponent->Velocity.X, 0, Magnitude));
 }
 
-void ABallBoy::MoveY_Implementation(float Magnitude)
+void ABallBoy::SetBall_X(float Magnitude)
 {
-	if (Magnitude != InertialMovementComponent->Velocity.Z)
-	{
-		InertialMovementComponent->UpdateVelocity(FVector(InertialMovementComponent->Velocity.X, 0, Magnitude));
-	}
+
 }
-void ABallBoy::SetBall_Y_Implementation(float Magnitude)
+
+void ABallBoy::SetBall_Y(float Magnitude)
 {
-	bTickMoveBall = true;
+
+}
+
+void ABallBoy::RotateBall(float Magnitude)
+{
+	if (HeldBall == nullptr)
+	{
+		return;
+	}
+
+	//if(Magnitude == HeldBall->GetRootComponent()->)
+	Server_SetSpinDirection(Magnitude);
 }
 
 void ABallBoy::CatchBall(ABrawlBall* Ball)
 {
-	if (IsHoldingBall() || Ball == nullptr)
+	UE_LOG(LogClass, Warning, TEXT("Catchball: %d"), (int)Role);
+	if (HeldBall != nullptr)
 	{
 		return;
 	}
-	
-	HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius();
-	FVector Diff = Ball->GetActorLocation() - GetActorLocation();
-	SpringArmComponent->SetWorldRotation(Diff.ToOrientationRotator());
-	Ball->GetRootComponent()->AttachToComponent(SpringArmComponent, FAttachmentTransformRules(EAttachmentRule::KeepWorld, false), NAME_None);
+	//if (Role == ROLE_AutonomousProxy)
+	//{
 
-if (Role == ROLE_Authority)
-{
-	HeldBall = Ball;
-	Client_SetHeldBall(HeldBall);
+		FAttachmentTransformRules FATRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+		Ball->AttachToActor(this, FATRules);
+		HeldBall = Ball;
+		HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + HeldBall->BoundingSphere->GetScaledSphereRadius();
+
+		UE_LOG(LogClass, Warning, TEXT("%d: %d"), (int)Role, HeldBall);
+
+	//}
+	/*else if (Role == ROLE_Authority)
+	{
+		Ball->OnCatch(GetActorLocation());
+	}*/
 }
-}
+
 void ABallBoy::Server_CatchBall_Implementation(ABrawlBall* Ball)
 {
 	if (Ball != nullptr)
 	{
-		CatchBall(Ball);
+		UE_LOG(LogClass, Warning, TEXT("Balls"));
+		Ball->OnCatch(GetActorLocation());
 	}
-}
-void ABallBoy::Client_SetHeldBall_Implementation(ABrawlBall * Ball)
-{
-	HeldBall = Ball;
-	HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius();
+	//CatchBall(HeldBall);
 }
 
 void ABallBoy::ThrowBall()
 {
-	if (!IsHoldingBall()) { return; }
-
-	if (Role == ROLE_Authority)
+	if (HeldBall == nullptr)
 	{
-		FVector Dir = (HeldBall->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-		HeldBall->OnThrow(0, Dir);
-	}
-	else if (Role == ROLE_AutonomousProxy)
-	{
-		Server_ThrowBall();
-	}
+		return;
+	}		
 
-	HeldBall->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-	HeldBall->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Block);
+	FDetachmentTransformRules FDTRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
+	FVector Dir = (HeldBall->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	HeldBall->OnThrow(0, Dir);
+
+	HeldBall->DetachFromActor(FDTRules);
 	HeldBall = nullptr;
 	HeldBallDistance = 0;
-}
-void ABallBoy::Server_ThrowBall_Implementation()
-{
-	NetMulticast_ThrowBall(HeldBall);
-}
-void ABallBoy::NetMulticast_ThrowBall_Implementation(ABrawlBall* Ball)
-{
-	ThrowBall();
+
+	/*if (Role == ROLE_AutonomousProxy)
+	{
+		Server_ThrowBall();
+	}*/	
 }
 
 void ABallBoy::SetHeldBallDirection(float xOffset, float yOffset)
 {
-	if (!IsHoldingBall()) { return; }
-
-
-	FVector NewDirection = xOffset * FVector::ForwardVector + yOffset * FVector::UpVector;
-
-	NewDirection.Normalize();
-
-	/*if (NewDirection.SizeSquared() < .9f || NewDirection.Equals(NewDirection , .01f))
+	if (HeldBall == nullptr)
 	{
 		return;
-	}	*/
+	}
 
-	const FVector OldDirection = SpringArmComponent->GetForwardVector();
-	//UE_LOG(LogClass, Warning, TEXT("Old Forward: %f, %f"), OldDirection.X, OldDirection.Z);
-	//UE_LOG(LogClass, Warning, TEXT("TargetDirection: %f, %f"), NewDirection.X, NewDirection.Z);
-	const int AngleSin = FMath::Asin(FVector::CrossProduct(OldDirection, NewDirection).Y);
-	const int Direction = FMath::Sign(AngleSin);
-	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(OldDirection, NewDirection)));
-	//UE_LOG(LogClass, Warning, TEXT("Direction: %d, AngleCos: %f, AngleSin: %f"), Direction, Angle, FVector::CrossProduct(OldDirection, NewDirection).Y);
-	TargetAngularDistance = Direction * Angle;
+	FVector Radius = xOffset * FVector::ForwardVector + yOffset * FVector::UpVector;
+	Radius.Normalize();
+	Radius *= HeldBallDistance;
+	FVector Loc = GetActorLocation() + Radius;
+	HeldBall->SetActorLocation(Loc);
 
-	bRotateBall = true;
 
-	if(Role == ROLE_AutonomousProxy)
-	{		
-		Server_SetHeldBallDirection(NewDirection);
+	if (Role == ROLE_AutonomousProxy)
+	{
+		Server_SetHeldBallDirection(Loc);
 	}
 }
-void ABallBoy::Server_SetHeldBallDirection_Implementation(FVector Loc)
-{
-	if (!IsHoldingBall()) { return; }
-	//HeldBall->SpinTo(Loc);
-	//HeldBall->SetActorLocation(Loc);
+
+#pragma endregion
+
+
+
+void ABallBoy::Server_ThrowBall_Implementation()
+{	
+	ThrowBall();
 }
 
-void ABallBoy::RotateBall_Implementation(float Magnitude)
-{
-	if (Magnitude == 0.0f || !IsHoldingBall()) { return; }
-
-	Server_SetSpinDirection(Magnitude);
-}
 void ABallBoy::Server_SetSpinDirection_Implementation(float Magnitude)
 {
 	HeldBall->Spin(Magnitude);
 }
 
-#pragma endregion
+void ABallBoy::Server_SetHeldBallDirection_Implementation(FVector Loc)
+{
+	if (HeldBall == nullptr)
+		return;
+	HeldBall->SetActorLocation(Loc);
+}
 
 bool ABallBoy::Server_CatchBall_Validate(ABrawlBall* Ball)
 {

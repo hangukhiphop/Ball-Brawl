@@ -8,7 +8,6 @@
 #include "PaperSpriteComponent.h"
 #include "Components/SphereComponent.h"
 #include "InertialMovementComponent.h"
-#include "GameFramework/SpringArmComponent.h"
 #include "BrawlBall.h"
 
 #include "BallBoy.generated.h"
@@ -33,19 +32,10 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintNativeEvent)
 	void MoveX(float Magnitude);
-
-	UFUNCTION(BlueprintNativeEvent)
 	void MoveY(float Magnitude);
-
-	UFUNCTION(BlueprintNativeEvent)
 	void SetBall_X(float Magnitude);
-
-	UFUNCTION(BlueprintNativeEvent)
 	void SetBall_Y(float Magnitude);
-
-	UFUNCTION(BlueprintNativeEvent)
 	void RotateBall(float Magnitude);
 
 public:	
@@ -56,8 +46,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	bool IsHoldingBall() const;
+	
 	void CatchBall(ABrawlBall* Ball);
 	void ThrowBall();
 	void SetHeldBallDirection(float xOffset, float yOffset);
@@ -68,17 +57,11 @@ public:
 #pragma endregion UFUNCTION
 private:
 
-	UFUNCTION(Client, Reliable)
-	void Client_SetHeldBall(ABrawlBall* Ball);
-
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_CatchBall(ABrawlBall* Ball);
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_ThrowBall();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void NetMulticast_ThrowBall(ABrawlBall* Ball);
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SetSpinDirection(float Magnitude);
@@ -92,30 +75,18 @@ private:
 #pragma region UPROPERTY
 
 protected:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditInstanceOnly)
 		UPaperSpriteComponent* SpriteComponent;		
 
 	UPROPERTY(EditDefaultsOnly)
 		UInertialMovementComponent* InertialMovementComponent;
 
-	UPROPERTY(EditAnywhere)
-		USpringArmComponent* SpringArmComponent;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
 		float MaxSpeed = 15.0f;	
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
-		float BallRotationSpeed;
-
-	UPROPERTY(Replicated)
-		bool bRotateBall;
-
-	UPROPERTY(Replicated)
-		float TargetAngularDistance;
-
 public:
 
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = Collision)
+	UPROPERTY(EditAnywhere, Category = Collision)
 		USphereComponent* BoundingSphere;
 
 	UPROPERTY(EditAnywhere)
@@ -129,6 +100,5 @@ public:
 
 private:
 	float HeldBallDistance;
-	bool bTickMoveBall;
 
 };
