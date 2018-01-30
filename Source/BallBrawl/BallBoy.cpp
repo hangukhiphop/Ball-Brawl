@@ -194,7 +194,6 @@ void ABallBoy::SetHeldBallDirection(float xOffset, float yOffset)
 {
 	if (!IsHoldingBall()) { return; }
 
-
 	FVector NewDirection = xOffset * FVector::ForwardVector + yOffset * FVector::UpVector;
 
 	NewDirection.Normalize();
