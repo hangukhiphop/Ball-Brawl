@@ -42,6 +42,11 @@ void ABrawlBall::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifeti
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
+FVector ABrawlBall::GetVelocity() const
+{
+	return InertialMovementComponent->Velocity;
+}
+
 // Called when the game starts or when spawned
 void ABrawlBall::BeginPlay()
 {
@@ -59,7 +64,6 @@ void ABrawlBall::OnHit(AActor * SelfActor, AActor * OtherActor, FVector NormalIm
 	if (OtherActor->IsA(ABallBoy::StaticClass()) && OtherActor != GetParentActor())
 	{
 		Cast<ABallBoy>(OtherActor)->CatchBall(this);
-		SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	}
 	else
 	{
@@ -77,6 +81,7 @@ void ABrawlBall::SetCollisionResponseToChannel(ECollisionChannel Channel, EColli
 
 void ABrawlBall::OnCatch(USceneComponent* const CatcherLocation)
 {
+	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	if (InertialMovementComponent != nullptr)
 	{
 		InertialMovementComponent->UpdateVelocity(FVector::ZeroVector);

@@ -133,7 +133,11 @@ void ABallBoy::SetBall_Y_Implementation(float Magnitude)
 
 void ABallBoy::CatchBall(ABrawlBall* Ball)
 {
-	if (IsHoldingBall() || Ball == nullptr)
+	const FVector MyVelocity = InertialMovementComponent->Velocity;
+	const FVector BallVelocity = Ball->GetVelocity();
+	const FVector BoyToBall = Ball->GetActorLocation() - GetActorLocation();
+
+	if (IsHoldingBall() || FVector::Coincident(MyVelocity, BallVelocity, .01f) && FVector::Coincident(BoyToBall, MyVelocity, .01f) ||  Ball == nullptr)
 	{
 		return;
 	}
@@ -205,7 +209,6 @@ void ABallBoy::SetHeldBallDirection(float xOffset, float yOffset)
 		return;
 	}
 	
-	//const float AngleSin = OldDirection.X * NewDirection.Z - OldDirection.Z * NewDirection.X;
 	const int Direction = FMath::Sign(FMath::Asin(FVector::CrossProduct(OldDirection, NewDirection).Y));
 	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(OldDirection, NewDirection)));
 	TargetAngularDistance = Direction * Angle;

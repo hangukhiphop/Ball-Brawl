@@ -32,6 +32,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	FVector GetVelocity() const;
 
 	void OnCatch(USceneComponent* const CatcherLocation);
 	void Spin(float AngVel);
