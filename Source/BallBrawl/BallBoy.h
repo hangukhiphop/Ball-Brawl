@@ -110,6 +110,9 @@ protected:
 	UPROPERTY(Replicated)
 		bool bRotateBall;
 
+	UPROPERTY()
+		FVector TargetBallDirection;
+
 	UPROPERTY(Replicated)
 		float TargetAngularDistance;
 

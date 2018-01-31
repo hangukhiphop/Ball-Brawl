@@ -81,17 +81,17 @@ void ABrawlBall::OnCatch(USceneComponent* const CatcherLocation)
 	{
 		InertialMovementComponent->UpdateVelocity(FVector::ZeroVector);
 	}
-	if (OrbitalMovementComponent != nullptr)
-	{
-		//OrbitalMovementComponent->UpdatePivotTranslation(CatcherLocation);
-	}
+	//if (OrbitalMovementComponent != nullptr)
+	//{
+	//	//OrbitalMovementComponent->UpdatePivotTranslation(CatcherLocation);
+	//}
 
-	UE_LOG(LogClass, Warning, TEXT("%p"), PlanarRotatingMovementComponent);
-	if (PlanarRotatingMovementComponent != nullptr)
-	{
-		//UE_LOG(LogClass, Warning, TEXT("%d Catcher: %f %f, Ball: %f %f"), (int)Role, CatcherLocation.X, CatcherLocation.Z, GetActorLocation().X, GetActorLocation().Z);
-		PlanarRotatingMovementComponent->SetPivot(CatcherLocation);
-	}
+	//UE_LOG(LogClass, Warning, TEXT("%p"), PlanarRotatingMovementComponent);
+	//if (PlanarRotatingMovementComponent != nullptr)
+	//{
+	//	//UE_LOG(LogClass, Warning, TEXT("%d Catcher: %f %f, Ball: %f %f"), (int)Role, CatcherLocation.X, CatcherLocation.Z, GetActorLocation().X, GetActorLocation().Z);
+	//	PlanarRotatingMovementComponent->SetPivot(CatcherLocation);
+	//}
 	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 }
 

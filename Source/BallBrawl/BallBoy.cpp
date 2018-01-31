@@ -74,8 +74,8 @@ void ABallBoy::Tick(float DeltaTime)
 	if (bRotateBall)
 	{
 		float DeltaAngle = DeltaTime * BallRotationSpeed * FMath::Sign(TargetAngularDistance);
-		const FRotator DeltaRotator = FRotator(DeltaAngle, 0, 0);
-		SpringArmComponent->AddLocalRotation(DeltaRotator);
+		const FQuat DeltaQuat = FQuat(FVector::RightVector, FMath::DegreesToRadians(DeltaAngle));
+		SpringArmComponent->AddWorldRotation(DeltaQuat);
 		TargetAngularDistance -= DeltaAngle;
 
 		if (TargetAngularDistance * DeltaAngle < 0.0f)
@@ -137,7 +137,8 @@ void ABallBoy::CatchBall(ABrawlBall* Ball)
 	{
 		return;
 	}
-	
+
+	Ball->OnCatch(GetRootComponent());
 	HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius();
 	FVector Diff = Ball->GetActorLocation() - GetActorLocation();
 	SpringArmComponent->SetWorldRotation(Diff.ToOrientationRotator());
@@ -195,24 +196,22 @@ void ABallBoy::SetHeldBallDirection(float xOffset, float yOffset)
 	if (!IsHoldingBall()) { return; }
 
 	FVector NewDirection = xOffset * FVector::ForwardVector + yOffset * FVector::UpVector;
-
 	NewDirection.Normalize();
 
-	/*if (NewDirection.SizeSquared() < .9f || NewDirection.Equals(NewDirection , .01f))
+	const FVector OldDirection = SpringArmComponent->GetForwardVector();
+
+	if (NewDirection.Equals(OldDirection, .1f) || NewDirection.Equals(TargetBallDirection, .1f))
 	{
 		return;
-	}	*/
-
-	const FVector OldDirection = SpringArmComponent->GetForwardVector();
-	//UE_LOG(LogClass, Warning, TEXT("Old Forward: %f, %f"), OldDirection.X, OldDirection.Z);
-	//UE_LOG(LogClass, Warning, TEXT("TargetDirection: %f, %f"), NewDirection.X, NewDirection.Z);
-	const int AngleSin = FMath::Asin(FVector::CrossProduct(OldDirection, NewDirection).Y);
-	const int Direction = FMath::Sign(AngleSin);
+	}
+	
+	//const float AngleSin = OldDirection.X * NewDirection.Z - OldDirection.Z * NewDirection.X;
+	const int Direction = FMath::Sign(FMath::Asin(FVector::CrossProduct(OldDirection, NewDirection).Y));
 	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(OldDirection, NewDirection)));
-	//UE_LOG(LogClass, Warning, TEXT("Direction: %d, AngleCos: %f, AngleSin: %f"), Direction, Angle, FVector::CrossProduct(OldDirection, NewDirection).Y);
 	TargetAngularDistance = Direction * Angle;
 
 	bRotateBall = true;
+	TargetBallDirection = NewDirection;
 
 	if(Role == ROLE_AutonomousProxy)
 	{		
