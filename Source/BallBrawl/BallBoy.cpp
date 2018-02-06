@@ -41,9 +41,13 @@ ABallBoy::ABallBoy()
 void ABallBoy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	//DOREPLIFETIME(ABallBoy, SpringArmComponent);
+	//DOREPLIFETIME(ABallBoy, TargetBallDirection);
+	DOREPLIFETIME(ABallBoy, BallRotationSpeed);
+	DOREPLIFETIME(ABallBoy, TargetAngularDistance);
+	DOREPLIFETIME(ABallBoy, bRotateBall);
 	DOREPLIFETIME(ABallBoy, HeldBall);
 }
-
 // Called when the game starts or when spawned
 void ABallBoy::BeginPlay()
 {
@@ -52,28 +56,12 @@ void ABallBoy::BeginPlay()
 	TargetAngularDistance = 0.0f;
 }
 
-// Called every frame
-void ABallBoy::Tick(float DeltaTime)
+void ABallBoy::RotateBall(const float DeltaAngle)
 {
-	Super::Tick(DeltaTime);	
-
-	if (!IsHoldingBall()) { return; }
-
-	if (bTickMoveBall)
+	//UE_LOG(LogClass, Warning, TEXT("Rotate Ball 1: %d"), (int)Role);
+	if (HeldBall != nullptr && bRotateBall)
 	{
-		float x = GetInputAxisValue("HoldBall_X");
-		float y = GetInputAxisValue("HoldBall_Y");
-		if (!(FMath::Abs(x) < .99f && FMath::Abs(y) < .99f))
-		{
-			SetHeldBallDirection(x, y);
-		}
-
-		bTickMoveBall = false;
-	}
-
-	if (bRotateBall)
-	{
-		float DeltaAngle = DeltaTime * BallRotationSpeed * FMath::Sign(TargetAngularDistance);
+		UE_LOG(LogClass, Warning, TEXT("Rotate Ball: %d"), (int)Role);
 		const FQuat DeltaQuat = FQuat(FVector::RightVector, FMath::DegreesToRadians(DeltaAngle));
 		SpringArmComponent->AddWorldRotation(DeltaQuat);
 		TargetAngularDistance -= DeltaAngle;
@@ -81,8 +69,42 @@ void ABallBoy::Tick(float DeltaTime)
 		if (TargetAngularDistance * DeltaAngle < 0.0f)
 		{
 			bRotateBall = false;
+			TargetAngularDistance = 0;
 		}
 	}
+}
+
+// Called every frame
+void ABallBoy::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);	
+	
+	//UE_LOG(LogClass, Warning, TEXT("HeldBall: 0x%p, %d"), (void*)HeldBall, (int)Role);
+	if (IsHoldingBall())
+	{
+		if (Role = ROLE_AutonomousProxy)
+		{
+			if (bTickMoveBall)
+			{
+				float x = GetInputAxisValue("HoldBall_X");
+				float y = GetInputAxisValue("HoldBall_Y");
+				if (!(FMath::Abs(x) < .99f && FMath::Abs(y) < .99f))
+				{
+					SetHeldBallDirection(x, y);
+				}
+
+				bTickMoveBall = false;
+			}
+		}
+
+		//if (TargetAngularDistance != 0)
+		//{
+			float DeltaAngle = DeltaTime * BallRotationSpeed * FMath::Sign(TargetAngularDistance);
+			//UE_LOG(LogClass, Warning, TEXT("Rotate Ball %d"), (int)Role);
+			RotateBall(DeltaAngle);
+		//}
+	}
+	
 }
 
 // Called to bind functionality to input
@@ -103,8 +125,21 @@ void ABallBoy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 #pragma region Member Functions
 
 bool ABallBoy::IsHoldingBall() const
-{
+{	
+	//const TArray<USceneComponent*> Children = SpringArmComponent->GetAttachChildren();
+	//return Children.Num() != 0;// != nullptr;
 	return HeldBall != nullptr;
+}
+
+bool ABallBoy::CanCatchBall(ABrawlBall* Ball) const
+{
+	const FVector MyVelocity = InertialMovementComponent->Velocity;
+	const FVector BallVelocity = Ball->GetVelocity();
+	const FVector BoyToBall = Ball->GetActorLocation() - GetActorLocation();
+
+	return !(IsHoldingBall() || Ball == nullptr) ||
+		(FVector::Coincident(MyVelocity, BallVelocity, .01f) && 
+			FVector::Coincident(BoyToBall, MyVelocity, .01f)); //Is Chasing ball from behind		
 }
 
 void ABallBoy::MoveX_Implementation(float Magnitude)
@@ -114,10 +149,6 @@ void ABallBoy::MoveX_Implementation(float Magnitude)
 		InertialMovementComponent->UpdateVelocity(FVector(Magnitude, 0, InertialMovementComponent->Velocity.Z));
 	}
 }
-void ABallBoy::SetBall_X_Implementation(float Magnitude)
-{
-	bTickMoveBall = true;
-}
 
 void ABallBoy::MoveY_Implementation(float Magnitude)
 {
@@ -126,6 +157,12 @@ void ABallBoy::MoveY_Implementation(float Magnitude)
 		InertialMovementComponent->UpdateVelocity(FVector(InertialMovementComponent->Velocity.X, 0, Magnitude));
 	}
 }
+
+void ABallBoy::SetBall_X_Implementation(float Magnitude)
+{
+	bTickMoveBall = true;
+}
+
 void ABallBoy::SetBall_Y_Implementation(float Magnitude)
 {
 	bTickMoveBall = true;
@@ -133,42 +170,70 @@ void ABallBoy::SetBall_Y_Implementation(float Magnitude)
 
 void ABallBoy::CatchBall(ABrawlBall* Ball)
 {
-	const FVector MyVelocity = InertialMovementComponent->Velocity;
-	const FVector BallVelocity = Ball->GetVelocity();
-	const FVector BoyToBall = Ball->GetActorLocation() - GetActorLocation();
-
-	if (IsHoldingBall() || FVector::Coincident(MyVelocity, BallVelocity, .01f) && FVector::Coincident(BoyToBall, MyVelocity, .01f) ||  Ball == nullptr)
-	{
-		return;
-	}
+	UE_LOG(LogClass, Warning, TEXT("Catch Ball %d"), (int)Role);
+	
+	
+	if (!CanCatchBall(Ball)) { return; }
+//	if (Role == ROLE_AutonomousProxy)
+	//{
+		
 
 	Ball->OnCatch(GetRootComponent());
-	HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius();
-	FVector Diff = Ball->GetActorLocation() - GetActorLocation();
-	SpringArmComponent->SetWorldRotation(Diff.ToOrientationRotator());
-	Ball->GetRootComponent()->AttachToComponent(SpringArmComponent, FAttachmentTransformRules(EAttachmentRule::KeepWorld, false), NAME_None);
+			HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius();
+			FVector Diff = Ball->GetActorLocation() - GetActorLocation();
+			const FRotator Rotation = Diff.ToOrientationRotator();
+			SpringArmComponent->SetWorldRotation(Rotation);
 
-if (Role == ROLE_Authority)
-{
-	HeldBall = Ball;
-	Client_SetHeldBall(HeldBall);
+			Ball->GetRootComponent()->AttachToComponent(SpringArmComponent, FAttachmentTransformRules(EAttachmentRule::KeepWorld, false), NAME_None);
+
+			HeldBall = Ball;
+
+			//Server_CatchBall(Ball, Rotation);
+		
+//	}
+
+	//Ball->SetReplicates(false);
+	//HeldBall = Ball;
+	//UE_LOG(LogClass, Warning, TEXT("HeldBall: 0x%p, %d"), (void*)HeldBall, (int)Role);
+	//if (Role == ROLE_Authority)
+	//{
+	//	Client_SetHeldBall(Ball);
+	//}
 }
-}
-void ABallBoy::Server_CatchBall_Implementation(ABrawlBall* Ball)
+
+void ABallBoy::Server_CatchBall_Implementation(ABrawlBall* Ball, const FRotator& Rotation)
 {
-	if (Ball != nullptr)
+	UE_LOG(LogClass, Warning, TEXT("Server Catch Ball %d"), (int)Role);
+	if (Ball != nullptr && !IsHoldingBall())
 	{
-		CatchBall(Ball);
+		//CatchBall(Ball);
+		SpringArmComponent->SetWorldRotation(Rotation); 
+		Ball->OnCatch(GetRootComponent());
+		Ball->GetRootComponent()->AttachToComponent(SpringArmComponent, FAttachmentTransformRules(EAttachmentRule::KeepWorld, false), NAME_None);
+		HeldBall = Ball;
 	}
 }
 void ABallBoy::Client_SetHeldBall_Implementation(ABrawlBall * Ball)
 {
+	UE_LOG(LogClass, Warning, TEXT("Client Catch Ball %d"), (int)Role);
+	if (Ball == nullptr || IsHoldingBall()) { return; }
+
 	HeldBall = Ball;
-	HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius();
+	HeldBallDistance = BoundingSphere->GetScaledSphereRadius() + Ball->BoundingSphere->GetScaledSphereRadius(); 
+	Ball->OnCatch(GetRootComponent());
 }
+
+//void ABallBoy::NetMulticast_CatchBall_Implementation(ABrawlBall* Ball, const FRotator& Rotation)
+//{
+//	UE_LOG(LogClass, Warning, TEXT("NM Catch Ball %d"), (int)Role);
+//	if (Ball == nullptr || IsHoldingBall()) { return; }
+//
+//	CatchBall(Ball);
+//}
 
 void ABallBoy::ThrowBall()
 {
+	UE_LOG(LogClass, Warning, TEXT("Throw Ball %d"), (int)Role);
 	if (!IsHoldingBall()) { return; }
 
 	if (Role == ROLE_Authority)
@@ -188,7 +253,8 @@ void ABallBoy::ThrowBall()
 }
 void ABallBoy::Server_ThrowBall_Implementation()
 {
-	NetMulticast_ThrowBall(HeldBall);
+	ThrowBall();
+	//NetMulticast_ThrowBall(HeldBall);
 }
 void ABallBoy::NetMulticast_ThrowBall_Implementation(ABrawlBall* Ball)
 {
@@ -197,51 +263,46 @@ void ABallBoy::NetMulticast_ThrowBall_Implementation(ABrawlBall* Ball)
 
 void ABallBoy::SetHeldBallDirection(float xOffset, float yOffset)
 {
+	UE_LOG(LogClass, Warning, TEXT("Set Held Ball direction %d"), (int)Role);
 	if (!IsHoldingBall()) { return; }
 
-	FVector NewDirection = xOffset * FVector::ForwardVector + yOffset * FVector::UpVector;
-	NewDirection.Normalize();
-
-	const FVector OldDirection = SpringArmComponent->GetForwardVector();
-
-	if (NewDirection.Equals(OldDirection, .1f) || NewDirection.Equals(TargetBallDirection, .1f))
+	if (Role == ROLE_AutonomousProxy)
 	{
-		return;
-	}
-	
-	const int Direction = FMath::Sign(FMath::Asin(FVector::CrossProduct(OldDirection, NewDirection).Y));
-	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(OldDirection, NewDirection)));
-	TargetAngularDistance = Direction * Angle;
+		FVector NewDirection = xOffset * FVector::ForwardVector + yOffset * FVector::UpVector;
+		NewDirection.Normalize();
 
-	bRotateBall = true;
-	TargetBallDirection = NewDirection;
+		const FVector OldDirection = SpringArmComponent->GetForwardVector();
 
-	if(Role == ROLE_AutonomousProxy)
-	{		
-		Server_SetHeldBallDirection(NewDirection);
+		if (NewDirection.Equals(OldDirection, .1f) || NewDirection.Equals(TargetBallDirection, .1f))
+		{
+			return;
+		}
+
+		const int Direction = FMath::Sign(FMath::Asin(FVector::CrossProduct(OldDirection, NewDirection).Y));
+		const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(OldDirection, NewDirection)));
+		TargetAngularDistance = Direction * Angle;
+
+		bRotateBall = true;
+		TargetBallDirection = NewDirection;
+
+		Server_SetHeldBallDirection(TargetBallDirection, TargetAngularDistance);
 	}
 }
-void ABallBoy::Server_SetHeldBallDirection_Implementation(FVector Loc)
+void ABallBoy::Server_SetHeldBallDirection_Implementation(const FVector Direction, const float AngularDistance)
 {
+	UE_LOG(LogClass, Warning, TEXT("Server Held Ball direction %d"), (int)Role);
 	if (!IsHoldingBall()) { return; }
+
+	TargetBallDirection = Direction;
+	TargetAngularDistance = AngularDistance;
+	bRotateBall = true;
 	//HeldBall->SpinTo(Loc);
 	//HeldBall->SetActorLocation(Loc);
 }
 
-void ABallBoy::RotateBall_Implementation(float Magnitude)
-{
-	if (Magnitude == 0.0f || !IsHoldingBall()) { return; }
-
-	Server_SetSpinDirection(Magnitude);
-}
-void ABallBoy::Server_SetSpinDirection_Implementation(float Magnitude)
-{
-	HeldBall->Spin(Magnitude);
-}
-
 #pragma endregion
 
-bool ABallBoy::Server_CatchBall_Validate(ABrawlBall* Ball)
+bool ABallBoy::Server_CatchBall_Validate(ABrawlBall* Ball, const FRotator& Rotation)
 {
 	return true;
 }
@@ -251,12 +312,7 @@ bool ABallBoy::Server_ThrowBall_Validate()
 	return true;
 }
 
-bool ABallBoy::Server_SetSpinDirection_Validate(float Magnitude)
-{
-	return true;
-}
-
-bool ABallBoy::Server_SetHeldBallDirection_Validate(FVector Loc)
+bool ABallBoy::Server_SetHeldBallDirection_Validate(const FVector Direction, const float AngularDistance)
 {
 	return true;
 }

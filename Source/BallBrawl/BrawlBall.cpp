@@ -32,9 +32,9 @@ ABrawlBall::ABrawlBall()
 	OrbitalMovementComponent->SetUpdatedComponent(BoundingSphere);
 	OrbitalMovementComponent->SetIsReplicated(true);*/
 
-	PlanarRotatingMovementComponent = CreateDefaultSubobject<UPlanarRotatingMovementComponent>(TEXT("PlanarRotatingMovementComponent"));
+	/*PlanarRotatingMovementComponent = CreateDefaultSubobject<UPlanarRotatingMovementComponent>(TEXT("PlanarRotatingMovementComponent"));
 	PlanarRotatingMovementComponent->SetUpdatedComponent(BoundingSphere);
-	PlanarRotatingMovementComponent->SetIsReplicated(true);
+	PlanarRotatingMovementComponent->SetIsReplicated(true);*/
 }
 
 void ABrawlBall::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -63,6 +63,7 @@ void ABrawlBall::OnHit(AActor * SelfActor, AActor * OtherActor, FVector NormalIm
 {
 	if (OtherActor->IsA(ABallBoy::StaticClass()) && OtherActor != GetParentActor())
 	{
+		UE_LOG(LogClass, Warning, TEXT("Hit %d"), (int)Role);
 		Cast<ABallBoy>(OtherActor)->CatchBall(this);
 	}
 	else
@@ -97,7 +98,10 @@ void ABrawlBall::OnCatch(USceneComponent* const CatcherLocation)
 	//	//UE_LOG(LogClass, Warning, TEXT("%d Catcher: %f %f, Ball: %f %f"), (int)Role, CatcherLocation.X, CatcherLocation.Z, GetActorLocation().X, GetActorLocation().Z);
 	//	PlanarRotatingMovementComponent->SetPivot(CatcherLocation);
 	//}
+	UE_LOG(LogClass, Warning, TEXT("Disable Collision: %d"), (int)Role);
 	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
+	//bReplicateMovement = false;
+	//bReplicates = false;
 }
 
 void ABrawlBall::OnThrow(const int Color, const FVector& Direction)
@@ -106,33 +110,19 @@ void ABrawlBall::OnThrow(const int Color, const FVector& Direction)
 	{
 		InertialMovementComponent->UpdateVelocity(Direction);
 	}
-	if (OrbitalMovementComponent != nullptr)
+	/*if (OrbitalMovementComponent != nullptr)
 	{
 		OrbitalMovementComponent->UpdatePivotTranslation(FVector::ZeroVector);
-	}
+	}*/
 	SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Block);
 }
 
 void ABrawlBall::Spin(float AngVel)
 {
-	if (OrbitalMovementComponent != nullptr)
+	/*if (OrbitalMovementComponent != nullptr)
 	{
 		OrbitalMovementComponent->SetAngularSpeed(AngVel);
-	}
-}
-
-void ABrawlBall::SpinTo(const FVector & Forward)
-{
-	Forward.ClampMaxSize(1.0f);
-	//UE_LOG(LogClass, Warning, TEXT("SpinTo: %d"), (int)Role);
-	if (OrbitalMovementComponent != nullptr)
-	{
-		OrbitalMovementComponent->SetLerpForward(Forward);
-	}
-	if (PlanarRotatingMovementComponent != nullptr)
-	{
-		PlanarRotatingMovementComponent->SetTargetRotation(Forward);
-	}
+	}*/
 }
 
 #pragma region Client Member Functions

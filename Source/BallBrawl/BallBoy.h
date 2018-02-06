@@ -45,9 +45,6 @@ protected:
 	UFUNCTION(BlueprintNativeEvent)
 	void SetBall_Y(float Magnitude);
 
-	UFUNCTION(BlueprintNativeEvent)
-	void RotateBall(float Magnitude);
-
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -58,9 +55,12 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	bool IsHoldingBall() const;
+	bool CanCatchBall(ABrawlBall* Ball) const;
 	void CatchBall(ABrawlBall* Ball);
 	void ThrowBall();
 	void SetHeldBallDirection(float xOffset, float yOffset);
+	void RotateBall(const float DeltaAngle);
+
 	
 #pragma region Member Functions
 
@@ -72,7 +72,10 @@ private:
 	void Client_SetHeldBall(ABrawlBall* Ball);
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_CatchBall(ABrawlBall* Ball);
+	void Server_CatchBall(ABrawlBall* Ball, const FRotator& Rotation);
+
+	/*UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_CatchBall(ABrawlBall* Ball);*/
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_ThrowBall();
@@ -80,11 +83,8 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void NetMulticast_ThrowBall(ABrawlBall* Ball);
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SetSpinDirection(float Magnitude);
-
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_SetHeldBallDirection(FVector Loc);
+	void Server_SetHeldBallDirection(const FVector Direction, const float AngularDistance);
 
 #pragma endregion UFUNCTION	
 
@@ -101,20 +101,20 @@ protected:
 	UPROPERTY(EditAnywhere)
 		USpringArmComponent* SpringArmComponent;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
+	UPROPERTY()
+		FVector TargetBallDirection;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float MaxSpeed = 15.0f;	
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
 		float BallRotationSpeed;
 
 	UPROPERTY(Replicated)
-		bool bRotateBall;
-
-	UPROPERTY()
-		FVector TargetBallDirection;
+		float TargetAngularDistance;
 
 	UPROPERTY(Replicated)
-		float TargetAngularDistance;
+		bool bRotateBall;
 
 public:
 

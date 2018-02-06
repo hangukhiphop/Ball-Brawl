@@ -36,7 +36,6 @@ public:
 
 	void OnCatch(USceneComponent* const CatcherLocation);
 	void Spin(float AngVel);
-	void SpinTo(const FVector& Forward);
 	/*void SetHolder(ABallBoy& NewHolder);*/
 
 	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse);
@@ -71,10 +70,10 @@ protected:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
 	UInertialMovementComponent* InertialMovementComponent;
 
-	UPROPERTY(Replicated, EditDefaultsOnly)
+	/*UPROPERTY(Replicated, EditDefaultsOnly)
 	UOrbitalMovementComponent* OrbitalMovementComponent;
 
 	UPROPERTY(Replicated, EditDefaultsOnly)
-	UPlanarRotatingMovementComponent* PlanarRotatingMovementComponent;
+	UPlanarRotatingMovementComponent* PlanarRotatingMovementComponent;*/
 
 };
