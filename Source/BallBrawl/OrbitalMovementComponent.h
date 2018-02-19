@@ -22,16 +22,20 @@ public:
 	bool MoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep = false, FHitResult* OutHit = nullptr, ETeleportType Teleport = ETeleportType::None);
 
 	void SetAngularSpeed(float Speed);
+	void SetLerpForward(const FVector& NewFoward);
 	void UpdatePivotTranslation(const FVector& NewPivotTranslation);
 
 
 
 private:
 
+	UFUNCTION(NetMulticast, Unreliable)
+	void NetMulticast_SetLerpForward(const FVector& NewForward);
+
 	UFUNCTION(NetMulticast, Reliable)
 	void NetMulticast_SetAngularSpeed(const FVector& Speed);
 
-	UFUNCTION(NetMulticast, Reliable)//, WithValidation)
+	UFUNCTION(NetMulticast, Reliable)
 	void NetMulticast_UpdatePivotTranslation(const FVector& NewPivotTranslation);
 
 private:
@@ -45,4 +49,10 @@ private:
 
 	UPROPERTY(Replicated)
 	FRotator RepRotationRate;
+	
+	UPROPERTY(Replicated)
+	bool ShouldLerp;
+
+	UPROPERTY(Replicated)
+	FVector LerpForward;
 };

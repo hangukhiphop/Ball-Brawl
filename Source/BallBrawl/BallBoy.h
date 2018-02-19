@@ -8,6 +8,7 @@
 #include "PaperSpriteComponent.h"
 #include "Components/SphereComponent.h"
 #include "InertialMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "BrawlBall.h"
 
 #include "BallBoy.generated.h"
@@ -32,11 +33,17 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	UFUNCTION(BlueprintNativeEvent)
 	void MoveX(float Magnitude);
+
+	UFUNCTION(BlueprintNativeEvent)
 	void MoveY(float Magnitude);
+
+	UFUNCTION(BlueprintNativeEvent)
 	void SetBall_X(float Magnitude);
+
+	UFUNCTION(BlueprintNativeEvent)
 	void SetBall_Y(float Magnitude);
-	void RotateBall(float Magnitude);
 
 public:	
 	// Called every frame
@@ -46,10 +53,14 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
+
+	bool IsHoldingBall() const;
+	bool CanCatchBall(ABrawlBall* Ball) const;
 	void CatchBall(ABrawlBall* Ball);
 	void ThrowBall();
 	void SetHeldBallDirection(float xOffset, float yOffset);
+	void RotateBall(const float DeltaAngle);
+
 	
 #pragma region Member Functions
 
@@ -57,17 +68,23 @@ public:
 #pragma endregion UFUNCTION
 private:
 
+	UFUNCTION(Client, Reliable)
+	void Client_SetHeldBall(ABrawlBall* Ball);
+
 	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_CatchBall(ABrawlBall* Ball);
+	void Server_CatchBall(ABrawlBall* Ball, const FRotator& Rotation);
+
+	/*UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_CatchBall(ABrawlBall* Ball);*/
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_ThrowBall();
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SetSpinDirection(float Magnitude);
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulticast_ThrowBall(ABrawlBall* Ball);
 
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_SetHeldBallDirection(FVector Loc);
+	void Server_SetHeldBallDirection(const FVector Direction, const float AngularDistance);
 
 #pragma endregion UFUNCTION	
 
@@ -75,18 +92,33 @@ private:
 #pragma region UPROPERTY
 
 protected:
-	UPROPERTY(EditInstanceOnly)
+	UPROPERTY(EditAnywhere)
 		UPaperSpriteComponent* SpriteComponent;		
 
 	UPROPERTY(EditDefaultsOnly)
 		UInertialMovementComponent* InertialMovementComponent;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
+	UPROPERTY(EditAnywhere)
+		USpringArmComponent* SpringArmComponent;
+
+	UPROPERTY()
+		FVector TargetBallDirection;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float MaxSpeed = 15.0f;	
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
+		float BallRotationSpeed;
+
+	UPROPERTY(Replicated)
+		float TargetAngularDistance;
+
+	UPROPERTY(Replicated)
+		bool bRotateBall;
 
 public:
 
-	UPROPERTY(EditAnywhere, Category = Collision)
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = Collision)
 		USphereComponent* BoundingSphere;
 
 	UPROPERTY(EditAnywhere)
@@ -100,5 +132,6 @@ public:
 
 private:
 	float HeldBallDistance;
+	bool bTickMoveBall;
 
 };

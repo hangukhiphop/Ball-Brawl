@@ -8,6 +8,7 @@
 #include "PaperSpriteComponent.h"
 #include "InertialMovementComponent.h"
 #include "OrbitalMovementComponent.h"
+#include "PlanarRotatingMovementComponent.h"
 #include "BrawlBall.generated.h"
 
 class ABallBoy; 
@@ -31,18 +32,23 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void OnCatch(const FVector& CatcherLocation);
-	void OnThrow(const int Color, const FVector& Direction);
+	FVector GetVelocity() const;
+
+	void OnCatch(USceneComponent* const CatcherLocation);
 	void Spin(float AngVel);
 	/*void SetHolder(ABallBoy& NewHolder);*/
 
+	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse);
 
+	UFUNCTION()
+		void OnThrow(const int Color, const FVector& Direction);
 #pragma endregion UFUNCTION
 private:
 	
 	/*UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SetHolder(ABallBoy* NewHolder);*/
-	
+
+
 	UFUNCTION()
 	void OnHit(AActor * SelfActor, AActor * OtherActor, FVector NormalImpulse, const FHitResult& Hit);
 
@@ -50,8 +56,8 @@ private:
 	
 public:
 
-	UPROPERTY(EditAnywhere, Category = Collision)
-		USphereComponent* BoundingSphere;
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = Collision)
+	USphereComponent* BoundingSphere;
 
 protected:
 	/*UPROPERTY(Replicated)
@@ -64,7 +70,10 @@ protected:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
 	UInertialMovementComponent* InertialMovementComponent;
 
-	UPROPERTY(Replicated, EditDefaultsOnly)
+	/*UPROPERTY(Replicated, EditDefaultsOnly)
 	UOrbitalMovementComponent* OrbitalMovementComponent;
+
+	UPROPERTY(Replicated, EditDefaultsOnly)
+	UPlanarRotatingMovementComponent* PlanarRotatingMovementComponent;*/
 
 };
