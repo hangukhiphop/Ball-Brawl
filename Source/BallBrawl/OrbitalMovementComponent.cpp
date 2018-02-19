@@ -30,8 +30,19 @@ void UOrbitalMovementComponent::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 void UOrbitalMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	PivotTranslation = FVector::ZeroVector;
+	if (ShouldLerp)
+	{
+		UE_LOG(LogClass, Warning, TEXT("Tick RotationRate: %d %f %f %f"), (int)GetOwnerRole(), RotationRate.Yaw, RotationRate.Pitch, RotationRate.Roll);
+		FVector Forward = UpdatedComponent->GetForwardVector();
+		if (Forward == LerpForward)
+		{
+			ShouldLerp = false;
+			//RotationRate = FRotator::ZeroRotator;
+		}
+	}
 }
-
 
 bool UOrbitalMovementComponent::MoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* OutHit, ETeleportType Teleport)
 {
@@ -40,14 +51,37 @@ bool UOrbitalMovementComponent::MoveUpdatedComponent(const FVector& Delta, const
 }
 
 void UOrbitalMovementComponent::SetAngularSpeed(float Speed)
-{
+{	
+	float Rate = Speed * BaseAngularSpeed;
+	FVector Angle = FVector::RightVector * Rate;
+	RotationRate = FRotator::MakeFromEuler(Angle); 
+	UE_LOG(LogClass, Warning, TEXT("Set speed: %d %f %f %f"), (int)GetOwnerRole(), RotationRate.Yaw, RotationRate.Pitch, RotationRate.Roll);
 	if (GetOwnerRole() == ROLE_Authority)
 	{
-		float Rate = Speed * BaseAngularSpeed;
-		FVector Angle = FVector::RightVector * Rate;
-		RotationRate = FRotator::MakeFromEuler(Angle);
 		NetMulticast_SetAngularSpeed(Angle);
 	}	
+}
+
+void UOrbitalMovementComponent::SetLerpForward(const FVector& NewForward)
+{
+	if (NewForward == LerpForward || NewForward == UpdatedComponent->GetForwardVector()) { return; }
+
+	LerpForward = NewForward;
+	SetAngularSpeed(1);
+	ShouldLerp = true;
+
+	UE_LOG(LogClass, Warning, TEXT("SetLerpForward: %d"), (int)GetOwnerRole());
+	if (GetOwnerRole() == ROLE_Authority)
+	{
+		UE_LOG(LogClass, Warning, TEXT("Shit: %d"), (int)GetOwnerRole());
+		NetMulticast_SetLerpForward(NewForward);
+	}
+}
+
+void UOrbitalMovementComponent::NetMulticast_SetLerpForward_Implementation(const FVector & NewForward)
+{
+	UE_LOG(LogClass, Warning, TEXT("SetLerpForward: %d"), (int)GetOwnerRole());
+	SetLerpForward(NewForward);
 }
 
 void UOrbitalMovementComponent::UpdatePivotTranslation(const FVector& NewPivotTranslation)

@@ -22,23 +22,22 @@ public:
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	bool MoveUpdatedComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep = false, FHitResult* OutHit = nullptr, ETeleportType Teleport = ETeleportType::None);
 
-	void UpdateVelocity(FVector NewVelocity);
-	
-	/*UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = Velocity)
-	FVector Velocity;*/
+	void UpdateVelocity(const FVector& NewVelocity);
+	void BounceSurface(const FVector& Normal);
 
 private:
 
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_UpdateVelocity(FVector NewVelocity);
+	void Server_UpdateVelocity(const FVector& NewVelocity, const FVector& PrevPos);
 
 public:
 	
-private:
+protected:
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadWrite)
 	FVector Server_Velocity;
+
 	//Persistent magnitude of Velocity when moving
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float Speed;
 };
