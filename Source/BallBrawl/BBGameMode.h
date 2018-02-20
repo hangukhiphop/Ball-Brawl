@@ -3,6 +3,7 @@
 #pragma once
 
 #include "BallBoy.h"
+#include "PlasmaBarrel.h"
 #include "CoreMinimal.h"
 #include "UObject/Class.h"
 #include "GameFramework/Controller.h"
@@ -23,9 +24,10 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 	virtual void BeginPlay() override;
-	/*virtual void StartPlay() override;*/
+	int GetHealthPerTeam() const;
 
 private:
+	
 	void SpawnBalls();
 
 public:
@@ -33,11 +35,18 @@ public:
 	static const int BACKGROUND_RADIUS = 242;
 
 private:
-	//UPROPERTY(EditDefaultsOnly)
-	TArray<ABrawlBall*> SceneBrawlBalls;
 
+	UPROPERTY(EditAnywhere)
+	int HealthPerTeam;
+
+private:
+	//UPROPERTY(EditDefaultsOnly)
 	int PlayersSpawned;
+	TArray<ABrawlBall*> SceneBrawlBalls;
 	TArray<ABallBoy*> SceneBallBoys;
-	//ABrawlBall* BrawlBall;
+	TArray<APlasmaBarrel*> ScenePlasmaBarrels;
+
+	
+
 
 };
