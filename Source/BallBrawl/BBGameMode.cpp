@@ -22,6 +22,8 @@ ABBGameMode::ABBGameMode(const FObjectInitializer& ObjectInitializer)
 	{
 		SceneBallBoys.Add(Cast<ABallBoy>(BallBoyActors[i]));
 	}
+	
+	
 }
 
 void ABBGameMode::PostLogin(APlayerController* NewPlayer)
@@ -39,20 +41,27 @@ UClass* ABBGameMode::GetDefaultPawnClassForController_Implementation(AController
 void ABBGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
 	TArray<AActor*> BrawlBallActors;
 	UGameplayStatics::GetAllActorsOfClass(this, ABrawlBall::StaticClass(), BrawlBallActors);
 	for (int i = 0; i < BrawlBallActors.Num(); i++)
 	{
 		SceneBrawlBalls.Add(Cast<ABrawlBall>(BrawlBallActors[i]));
 	}
+	
+	TArray<AActor*> PlasmaBarrelActors;
+	UGameplayStatics::GetAllActorsOfClass(this, ABrawlBall::StaticClass(), PlasmaBarrelActors);
+	for (int i = 0; i < PlasmaBarrelActors.Num(); i++)
+	{
+		ScenePlasmaBarrels.Add(Cast<APlasmaBarrel>(PlasmaBarrelActors[i]));
+	}
 }
 
-//void ABBGameMode::StartPlay()
-//{
-//	Super::StartPlay();
-//	UE_LOG(LogClass, Warning, TEXT("Start"));
-//	//UE_LOG(LogClass, Warning, TEXT("Gamemode Role: %d"), (int)Role);
-//}
+int ABBGameMode::GetHealthPerTeam() const
+{
+	UE_LOG(LogClass, Warning, TEXT("GameMode %d"), HealthPerTeam);
+	return HealthPerTeam;
+}
 
 void ABBGameMode::SpawnBalls()
 {

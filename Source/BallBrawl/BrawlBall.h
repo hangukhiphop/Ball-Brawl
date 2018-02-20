@@ -35,24 +35,18 @@ public:
 	FVector GetVelocity() const;
 
 	void OnCatch(USceneComponent* const CatcherLocation);
-	void Spin(float AngVel);
-	/*void SetHolder(ABallBoy& NewHolder);*/
-
 	void SetCollisionResponseToChannel(ECollisionChannel Channel, ECollisionResponse NewResponse);
-
-	UFUNCTION()
-		void OnThrow(const int Color, const FVector& Direction);
-#pragma endregion UFUNCTION
-private:
 	
-	/*UFUNCTION(Server, Reliable, WithValidation)
-	void Server_SetHolder(ABallBoy* NewHolder);*/
+	UFUNCTION()
+	void OnThrow(const int Color, const FVector& Direction);
 
+private:
 
 	UFUNCTION()
 	void OnHit(AActor * SelfActor, AActor * OtherActor, FVector NormalImpulse, const FHitResult& Hit);
 
-#pragma endregion UFUNCTION	
+	UFUNCTION()
+	void OnBounce(const FHitResult& Hit);
 	
 public:
 
@@ -60,20 +54,11 @@ public:
 	USphereComponent* BoundingSphere;
 
 protected:
-	/*UPROPERTY(Replicated)
-	ABallBoy* Holder;*/
-
 
 	UPROPERTY(EditAnywhere)
 	UPaperSpriteComponent* SpriteComponent;
 
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite)
 	UInertialMovementComponent* InertialMovementComponent;
-
-	/*UPROPERTY(Replicated, EditDefaultsOnly)
-	UOrbitalMovementComponent* OrbitalMovementComponent;
-
-	UPROPERTY(Replicated, EditDefaultsOnly)
-	UPlanarRotatingMovementComponent* PlanarRotatingMovementComponent;*/
 
 };

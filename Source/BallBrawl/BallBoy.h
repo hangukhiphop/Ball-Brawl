@@ -55,83 +55,80 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	bool IsHoldingBall() const;
-	bool CanCatchBall(ABrawlBall* Ball) const;
 	void CatchBall(ABrawlBall* Ball);
 	void ThrowBall();
 	void SetHeldBallDirection(float xOffset, float yOffset);
-	void RotateBall(const float DeltaAngle);
-
 	
 #pragma region Member Functions
 
 
-#pragma endregion UFUNCTION
+#pragma region RPC
+
 private:
-
-	UFUNCTION(Client, Reliable)
-	void Client_SetHeldBall(ABrawlBall* Ball);
-
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_CatchBall(ABrawlBall* Ball, const FRotator& Rotation);
-
-	/*UFUNCTION(NetMulticast, Reliable)
-	void NetMulticast_CatchBall(ABrawlBall* Ball);*/
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_ThrowBall();
 
 	UFUNCTION(NetMulticast, Reliable)
-	void NetMulticast_ThrowBall(ABrawlBall* Ball);
+	void Multicast_ThrowBall();
 
 	UFUNCTION(Server, Unreliable, WithValidation)
-	void Server_SetHeldBallDirection(const FVector Direction, const float AngularDistance);
+	void Server_SetHeldBallDirection(FVector Direction, float AngularDistance);
 
-#pragma endregion UFUNCTION	
+
+#pragma endregion RPC
+
+
+#pragma region Component
+
+protected:
+
+	//Root component
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = Collision)
+		USphereComponent* BoundingSphere;
+
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite)
+		UPaperSpriteComponent* SpriteComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+		UInertialMovementComponent* InertialMovementComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+		USpringArmComponent* SpringArmComponent;
+
+#pragma endregion Component
 
 
 #pragma region UPROPERTY
 
 protected:
-	UPROPERTY(EditAnywhere)
-		UPaperSpriteComponent* SpriteComponent;		
 
-	UPROPERTY(EditDefaultsOnly)
-		UInertialMovementComponent* InertialMovementComponent;
+	UPROPERTY(VisibleAnywhere)
+	bool bTickMoveBall;
 
-	UPROPERTY(EditAnywhere)
-		USpringArmComponent* SpringArmComponent;
+	UPROPERTY(VisibleAnywhere)
+	bool bRotateBall;
 
-	UPROPERTY()
-		FVector TargetBallDirection;
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+	uint8 TeamNo;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		float MaxSpeed = 15.0f;	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MaxSpeed = 15.0f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
-		float BallRotationSpeed;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float BallRotationSpeed;
 
-	UPROPERTY(Replicated)
-		float TargetAngularDistance;
+	UPROPERTY(VisibleAnywhere)
+	float TargetAngularDistance;
 
-	UPROPERTY(Replicated)
-		bool bRotateBall;
+	UPROPERTY(VisibleAnywhere)
+	FVector TargetBallDirection;
 
-public:
+	UPROPERTY(Replicated, BlueprintReadOnly, VisibleAnywhere)
+	ABrawlBall* HeldBall;
 
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = Collision)
-		USphereComponent* BoundingSphere;
-
-	UPROPERTY(EditAnywhere)
-		int TeamNo;
-
-	UPROPERTY(Replicated, BlueprintReadOnly)
-		ABrawlBall* HeldBall;
 
 #pragma endregion UPROPERTY
 
-
-private:
-	float HeldBallDistance;
-	bool bTickMoveBall;
 
 };
